@@ -1,0 +1,187 @@
+/* ── Google Fonts — Inter ───────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── DECORA Brand CSS Variables ─────────────────────────────────────────────── */
+:root {
+  --decora-machina-blue:      #1f355e;
+  --decora-sublimation-green: #009877;
+  --decora-silver:            #8e9090;
+  --decora-black:             #231f20;
+  --decora-gradient:          linear-gradient(135deg, #1f355e 0%, #009377 100%);
+  --decora-gradient-r:        linear-gradient(135deg, #009877 0%, #1f355e 100%);
+  --decora-sidebar-bg:        #0b1424;
+  --decora-sidebar-border:    rgba(255,255,255,0.06);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply text-gray-900 antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Better heading weights with Inter */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* Scrollbar styling — DECORA themed */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(31, 53, 94, 0.2);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(31, 53, 94, 0.4);
+  }
+  /* Dark context scrollbars (sidebar, kiosks) */
+  .dark-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .dark-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+}
+
+@layer components {
+  /* ── Brand Gradient Button ───────────────────────────────────────────────── */
+  .btn-brand-gradient {
+    background: var(--decora-gradient);
+    @apply text-white shadow-md;
+    transition: filter 0.2s ease, box-shadow 0.2s ease;
+  }
+  .btn-brand-gradient:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 0 0 3px rgba(0,152,119,0.25);
+  }
+
+  /* ── Gradient Text ───────────────────────────────────────────────────────── */
+  .gradient-text {
+    background: var(--decora-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Brand Gradient Background ───────────────────────────────────────────── */
+  .bg-brand-gradient {
+    background: var(--decora-gradient);
+  }
+  .bg-brand-gradient-r {
+    background: var(--decora-gradient-r);
+  }
+
+  /* ── Glass Card ──────────────────────────────────────────────────────────── */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    @apply border border-white/50 shadow-card rounded-xl;
+  }
+
+  /* ── Shimmer Loading ─────────────────────────────────────────────────────── */
+  .shimmer {
+    background: linear-gradient(90deg, transparent 25%, rgba(31,53,94,0.04) 50%, transparent 75%);
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+
+  /* ── Accent pill badge ───────────────────────────────────────────────────── */
+  .badge-accent {
+    @apply bg-accent-50 text-accent-700 border border-accent-200 text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+  .badge-brand {
+    @apply bg-brand-50 text-brand-700 border border-brand-200 text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ── Scan station toast animation ─────────────────────────────────────────── */
+  @keyframes slide-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0);   opacity: 1; }
+  }
+  .animate-slide-in {
+    animation: slide-in 0.25s ease-out;
+  }
+
+  /* ── Gradient border ─────────────────────────────────────────────────────── */
+  .gradient-border {
+    position: relative;
+  }
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--decora-gradient);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* ── Brand divider line ──────────────────────────────────────────────────── */
+  .brand-divider {
+    height: 2px;
+    background: var(--decora-gradient);
+    border-radius: 1px;
+  }
+}
+
+/* ── Label Print Styles ──────────────────────────────────────────────────────── */
+@media print {
+  body * {
+    visibility: visible;
+  }
+  body.printing-labels * {
+    visibility: hidden;
+  }
+  body.printing-labels #label-print-area,
+  body.printing-labels #label-print-area * {
+    visibility: visible;
+  }
+  body.printing-labels #label-print-area {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: white;
+  }
+  @page {
+    size: 2in 1in;
+    margin: 2mm;
+  }
+  body.printing-labels .barcode-label {
+    page-break-after: always;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}

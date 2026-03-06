@@ -1,0 +1,417 @@
+// Decora ERP — Prisma Schema
+// Strategy: Normalize critical entities (User, Customer, Quote, Job, Invoice,
+// Inventory, Employee, Equipment). All other entities stored via AppStateDelta
+// (action-log replay pattern) — enabling zero-component-change migration.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  admin
+  manager
+  operator
+  sales
+  viewer
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  passwordHash   String
+  role           Role     @default(operator)
+  department     String   @default("")
+  avatarInitials String   @default("")
+  phone          String?
+  active         Boolean  @default(true)
+  lastLogin      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]     @relation("AuditUser")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── CUSTOMERS ────────────────────────────────────────────────────────────────
+
+model Customer {
+  id              String   @id @default(cuid())
+  accountNumber   String?  @unique
+  name            String
+  type            String   @default("commercial")
+  email           String?
+  phone           String?
+  website         String?
+  status          String   @default("active")
+  currency        String   @default("CAD")
+  paymentTerms    String   @default("Net 30")
+  creditLimit     Float?
+  taxExempt       Boolean  @default(false)
+  taxNumber       String?
+  billingAddress  Json?
+  shippingAddress Json?
+  contacts        Json?    // Contact[]
+  tags            String[]
+  notes           String?
+  // Metrics (denormalized for quick display)
+  totalRevenue    Float    @default(0)
+  totalJobs       Int      @default(0)
+  avgJobValue     Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  quotes   Quote[]
+  jobs     Job[]
+  invoices Invoice[]
+
+  @@map("customers")
+}
+
+// ─── QUOTES ───────────────────────────────────────────────────────────────────
+
+model Quote {
+  id               String    @id @default(cuid())
+  quoteNumber      String    @unique
+  customerId       String
+  customer         Customer  @relation(fields: [customerId], references: [id])
+  customerName     String
+  status           String    @default("draft")
+  priority         String    @default("normal")
+  createdBy        String
+  issueDate        String
+  expiryDate       String?
+  lineItems        Json      // QuoteLineItem[]
+  subtotal         Float     @default(0)
+  discountAmount   Float     @default(0)
+  taxRate          Float     @default(0)
+  taxAmount        Float     @default(0)
+  total            Float     @default(0)
+  notes            String?
+  internalNotes    String?
+  currency         String    @default("CAD")
+  deliveryProvince String?
+  taxOverride      Boolean   @default(false)
+  rackConfig       Json?
+  convertedToJobId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@map("quotes")
+}
+
+// ─── JOBS ─────────────────────────────────────────────────────────────────────
+
+model Job {
+  id               String    @id @default(cuid())
+  jobNumber        String    @unique
+  quoteId          String?
+  customerId       String
+  customer         Customer  @relation(fields: [customerId], references: [id])
+  customerName     String
+  serviceType      String    @default("powder_coating")
+  status           String    @default("received")
+  priority         String    @default("normal")
+  parts            Json      // JobPart[]
+  quotedRackConfig Json?
+  dueDate          String
+  receivedDate     String
+  completedDate    String?
+  estimatedHours   Float     @default(0)
+  laborCost        Float     @default(0)
+  materialCost     Float     @default(0)
+  totalCost        Float     @default(0)
+  salePrice        Float     @default(0)
+  notes            String?
+  internalNotes    String?
+  statusHistory    Json      // JobStatusHistory[]
+  attachments      Json?     // JobAttachment[]
+  operatorId       String?
+  qcInspectorId    String?
+  scheduledDate    String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([priority])
+  @@map("jobs")
+}
+
+// ─── INVOICES ─────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id            String    @id @default(cuid())
+  invoiceNumber String    @unique
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  customerName  String
+  jobId         String?
+  quoteId       String?
+  status        String    @default("draft")
+  issueDate     String
+  dueDate       String
+  paidDate      String?
+  lineItems     Json      // InvoiceLineItem[]
+  subtotal      Float     @default(0)
+  discountAmount Float    @default(0)
+  taxRate       Float     @default(0)
+  taxAmount     Float     @default(0)
+  total         Float     @default(0)
+  amountPaid    Float     @default(0)
+  notes         String?
+  paymentTerms  String?
+  currency      String    @default("CAD")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@map("invoices")
+}
+
+// ─── INVENTORY ────────────────────────────────────────────────────────────────
+
+model InventoryItem {
+  id              String    @id @default(cuid())
+  sku             String    @unique
+  name            String
+  description     String?
+  category        String    @default("consumable")
+  unit            String    @default("ea")
+  quantity        Float     @default(0)
+  reorderPoint    Float     @default(0)
+  reorderQuantity Float     @default(0)
+  unitCost        Float     @default(0)
+  location        String?
+  supplier        String?
+  supplierSku     String?
+  notes           String?
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  transactions InventoryTransaction[]
+
+  @@index([category])
+  @@map("inventory_items")
+}
+
+model InventoryTransaction {
+  id        String        @id @default(cuid())
+  itemId    String
+  item      InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type      String        // 'in' | 'out' | 'adjustment'
+  quantity  Float
+  reference String?       // job number, PO number, etc.
+  notes     String?
+  userId    String
+  userName  String        @default("")
+  createdAt DateTime      @default(now())
+
+  @@index([itemId])
+  @@map("inventory_transactions")
+}
+
+// ─── EMPLOYEES (HR) ───────────────────────────────────────────────────────────
+
+model Employee {
+  id               String    @id @default(cuid())
+  employeeNumber   String    @unique
+  name             String
+  email            String?
+  phone            String?
+  department       String    @default("")
+  position         String    @default("")
+  employmentType   String    @default("full_time")
+  payType          String    @default("hourly")
+  hourlyRate       Float?
+  salary           Float?
+  status           String    @default("active")
+  hireDate         String
+  terminationDate  String?
+  address          Json?
+  emergencyContact Json?
+  certifications   Json?     // Certification[]
+  // ADP Integration
+  adpAoid          String?
+  adpLastSync      String?
+  adpSyncStatus    String?   @default("not_linked")
+  pinHash          String?   // 4-digit kiosk PIN (bcrypt)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  attendanceRecords AttendanceRecord[]
+  trainingRecords   TrainingRecord[]
+
+  @@map("employees")
+}
+
+model AttendanceRecord {
+  id             String    @id @default(cuid())
+  employeeId     String
+  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date           String
+  clockIn        String?
+  clockOut       String?
+  breakMinutes   Int       @default(0)
+  totalHours     Float?
+  overtime       Float?
+  notes          String?
+  jobCostingRef  String?
+  adpTimecardId  String?
+  adpSubmitted   Boolean   @default(false)
+  adpSubmittedAt String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([employeeId])
+  @@index([date])
+  @@map("attendance_records")
+}
+
+model TrainingRecord {
+  id           String    @id @default(cuid())
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  title        String
+  category     String    @default("safety")
+  status       String    @default("pending")
+  completedAt  String?
+  expiresAt    String?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([employeeId])
+  @@map("training_records")
+}
+
+// ─── EQUIPMENT ────────────────────────────────────────────────────────────────
+
+model Equipment {
+  id                  String    @id @default(cuid())
+  name                String
+  type                String    @default("oven")
+  model               String?
+  manufacturer        String?
+  serialNumber        String?
+  status              String    @default("operational")
+  location            String?
+  purchaseDate        String?
+  warrantyExpiry      String?
+  lastMaintenanceDate String?
+  nextMaintenanceDate String?
+  notes               String?
+  specifications      Json?
+  runtimeHours        Float     @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  maintenanceTasks MaintenanceTask[]
+
+  @@map("equipment")
+}
+
+model MaintenanceTask {
+  id            String     @id @default(cuid())
+  equipmentId   String?
+  equipment     Equipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  title         String
+  description   String?
+  type          String     @default("preventive")
+  status        String     @default("pending")
+  priority      String     @default("normal")
+  assignedTo    String?
+  dueDate       String?
+  completedDate String?
+  estimatedHours Float?
+  actualHours   Float?
+  parts         Json?
+  notes         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([equipmentId])
+  @@index([status])
+  @@map("maintenance_tasks")
+}
+
+// ─── AUDIT LOG ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  userId     String?
+  user       User?     @relation("AuditUser", fields: [userId], references: [id], onDelete: SetNull)
+  userName   String    @default("System")
+  action     String
+  entityType String?
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String?   // null = broadcast to all users
+  type      String    @default("info")
+  title     String
+  message   String
+  read      Boolean   @default(false)
+  link      String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+// ─── APP STATE DELTA (Migration Bridge) ───────────────────────────────────────
+// Stores raw dispatch actions for entities not yet in normalized tables.
+// On GET /api/state, these are replayed to reconstruct the full AppState shape.
+// As more entities get normalized, deltas for those types are retired.
+
+model AppStateDelta {
+  id         String    @id @default(cuid())
+  actionType String
+  payload    Json
+  userId     String?
+  userName   String    @default("System")
+  appliedAt  DateTime  @default(now())
+  reverted   Boolean   @default(false)
+
+  @@index([actionType])
+  @@index([appliedAt])
+  @@map("app_state_deltas")
+}

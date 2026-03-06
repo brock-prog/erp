@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(echo:*)",
+      "Bash(ruby --version:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(/bin/bash:*)",
+      "Bash(export PATH=\"/Users/brock/.local/node-v22.14.0-darwin-arm64/bin:$PATH\")",
+      "Bash(node:*)",
+      "Bash(npm --version:*)",
+      "Bash(PATH=\"/Users/brock/.local/node-v22.14.0-darwin-arm64/bin:$PATH\" npx tsc:*)",
+      "Bash(/Users/brock/.local/node-v22.14.0-darwin-arm64/bin/node /Users/brock/.local/node-v22.14.0-darwin-arm64/bin/npx tsc --noEmit)",
+      "Bash(/Users/brock/.local/node-v22.14.0-darwin-arm64/bin/node:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(/Users/brock/.local/node-v22.14.0-darwin-arm64/bin/npm install jsbarcode qrcode.react --prefix /Users/brock/erp)",
+      "Bash(/Users/brock/.local/node-v22.14.0-darwin-arm64/bin/npm install jsbarcode qrcode.react)",
+      "Bash(/Users/brock/.local/node-v22.14.0-darwin-arm64/bin/npm --version)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(/usr/local/bin/node:*)",
+      "Bash(/opt/homebrew/bin/node:*)",
+      "Bash(unzip:*)",
+      "Bash(xargs:*)",
+      "Bash(npm run build:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(done)"
+    ]
+  }
+}
