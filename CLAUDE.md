@@ -385,23 +385,83 @@ Branch colors: `green` | `red` | `blue` | `amber` | `gray` | `purple`
 - [x] SAT MySQL integration planning (session 15):
   - Planning notes: `docs/plans/2026-03-03-sat-mysql-integration-notes.md`
   - Next step: schema exploration with provided MySQL credentials
-- [ ] ADP Edge Functions implementation (execute 11-task plan)
-- [ ] ROG PC deployment (follow deployment guide)
+- [x] Server-side automated backup system (session 16):
+  - **server/src/backup/backup-service.ts**: Core backup logic — pulls all 22 Supabase JSONB tables via service role key, writes timestamped JSON to local disk, verification (re-read + checksum + record count), rotation (keeps last N backups, default 120)
+  - **server/src/backup/backup-scheduler.ts**: node-cron scheduler (default every 6h), immediate backup on startup, health tracking (consecutiveFailures, lastRunAt, lastRunStatus)
+  - **server/src/routes/backup.ts**: Admin-only API endpoints (GET /health, /history, /results, POST /trigger, GET /download/:fileName)
+  - **supabase/backup-protection.sql**: Mass-delete prevention trigger (blocks DELETE > 50 rows), override via `SET decora.allow_mass_delete = 'true'`, applied to all 22 tables
+  - **server/src/index.ts**: Mounted backup routes, scheduler start/stop, health endpoint
+  - **server/src/config.ts**: Added supabase + backup config blocks (env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BACKUP_DIR, BACKUP_CRON, BACKUP_MAX_COUNT, BACKUP_ENABLED)
+  - **server/package.json**: Added @supabase/supabase-js, node-cron dependencies
+  - **AdminConsole.tsx**: ServerBackupCard component (health banner, schedule/storage info, history table, manual trigger)
+- [x] Procure to Pay module (session 16):
+  - **src/types/index.ts**: `PurchaseOrderStatus`, extended `PurchaseOrder` (vendorId, approvedBy, approvedAt, createdBy, updatedAt), `VendorBillStatus`, `VendorBill` interface
+  - **src/context/AppContext.tsx**: `purchaseOrders[]` + `vendorBills[]` state slices, 6 action types (ADD/UPDATE/DELETE for PO and VendorBill)
+  - **src/lib/db.ts**: 3 new Supabase tables (vendors, purchaseOrders, vendorBills), SYNC_RULES for all CRUD actions
+  - **src/components/procurement/Procurement.tsx** (~1300 lines): 5 tabs (Vendors, Purchase Orders, Bills, Receiving, Analytics), VendorModal, POModal, BillModal, status transitions, auto-generated PO/bill numbers
+  - **src/App.tsx**: Added `/procurement` route
+  - **src/components/layout/Sidebar.tsx**: Added Procurement nav item (ShoppingCart icon)
+  - **src/data/mockData.ts**: 6 vendors, 5 POs, 4 vendor bills mock data
+- [x] Git + GitHub setup (session 16):
+  - Repo: `https://github.com/brock-prog/erp.git` (private)
+  - GitHub username: `brock-prog`, auth via Git Credential Manager + PAT
+  - `.gitignore` created (node_modules, dist, .env files, logs, .DS_Store)
+  - Initial commit pushed from Mac
+- [x] ROG PC deployment — basic setup (session 16):
+  - **ROG PC specs**: AMD Ryzen (Family 25 Model 97), 32GB RAM, Windows 11, x64, hostname ARMOURY, IP 192.168.200.77 (WiFi)
+  - Git + Node.js v24.14.0 + npm 11.9.0 installed on ROG
+  - Repo cloned, `npm install` run in both root and server directories
+  - Express server running on port 3001 (`npm run dev` in server/)
+  - Vite frontend running on port 5173 (`npm run dev` in root)
+  - PowerShell execution policy set to RemoteSigned for CurrentUser
+  - **Supabase NOT yet configured** — app runs on localStorage only
+  - **server/.env NOT yet created** — backup scheduler skips (Supabase not configured)
+
+## Infrastructure
+
+| Machine | Role | OS | IP | Node |
+|---------|------|----|----|------|
+| Mac (Brad's MacBook Pro) | Development | macOS (ARM64) | — | v22.14.0 (custom path) |
+| ROG PC (ARMOURY) | Server / Runtime | Windows 11 (x64) | 192.168.200.77 | v24.14.0 |
+
+**Code sync workflow**: Mac → `git push` → GitHub → ROG `git pull`
+
+## Supabase Status
+
+**Not yet configured.** The `.env.local` has placeholder values. App currently runs entirely on localStorage. Need to either:
+1. Create a Supabase project and configure `.env.local` (frontend) + `server/.env` (backend)
+2. Or continue with localStorage-only for development
+
+---
+
+## Remaining Backlog (prioritized)
+
+### High Priority — Infrastructure
+- [ ] Set up Supabase project (create account, configure .env.local + server/.env, run backup-protection.sql)
+- [ ] VS Code Remote SSH from Mac → ROG PC (for remote development)
 - [ ] SAT MySQL schema exploration + sync service
+
+### High Priority — Features
+- [ ] ADP Edge Functions implementation (execute 11-task plan)
 - [ ] QB Phase 2: Supabase Edge Function for OAuth token storage + live invoice push
 - [ ] QB Phase 3: Bidirectional sync — pull payments from QB webhooks
-- [ ] Vendor management UI (list/add/edit vendors, link to inventory items)
-- [ ] Brokerage records UI (log import/export brokerage fees, ITC tracking)
 - [ ] Commercial Invoice generator (PDF, includes HS codes + CUSMA certification)
-- [ ] Scheduled backup to Supabase Storage bucket (server-side, not browser download)
-- [ ] 2FA / TOTP enrollment for admin accounts
-- [ ] IP allowlist for login (currently display-only — requires server-side enforcement)
+
+### Medium Priority — Features
+- [ ] Brokerage records UI (log import/export brokerage fees, ITC tracking)
 - [ ] Barcode / QR scan in ReceivingKiosk
-- [ ] Push notifications for overdue follow-ups (CRM Today tab)
 - [ ] Inspection ticket PDF generation (with critical surface areas highlighted)
 - [ ] Inventory reorder alerts / low-stock dashboard widget
+- [ ] Push notifications for overdue follow-ups (CRM Today tab)
+
+### Lower Priority — Features
 - [ ] Customer portal (read-only job status view)
 - [ ] Mobile-optimised operator view for shop floor
+
+### Security & Ops
+- [ ] 2FA / TOTP enrollment for admin accounts
+- [ ] IP allowlist for login (requires server-side enforcement)
+- [ ] Scheduled backup to Supabase Storage bucket (server-side, not browser download)
 
 ---
 
