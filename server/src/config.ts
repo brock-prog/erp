@@ -1,5 +1,8 @@
 // server/src/config.ts — Environment variable validation and typed config
 
+import dotenv from 'dotenv';
+dotenv.config();  // Load .env file into process.env
+
 function requireEnv(key: string): string {
   const value = process.env[key];
   if (!value) {
