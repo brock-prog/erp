@@ -869,7 +869,7 @@ export function Costing() {
   const flaggedCount = state.costEntries.filter(e => e.flagged && e.correctionStatus !== 'resolved').length;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
+    <div className="p-6 max-w-7xl mx-auto space-y-5 bg-gray-950 rounded-2xl">
       {/* Page header */}
       <div className="flex items-start justify-between">
         <div>

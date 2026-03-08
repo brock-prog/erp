@@ -313,7 +313,7 @@ export function Maintenance() {
             >
               {t.icon}{t.label}
               {!!t.badge && t.badge > 0 && (
-                <span className={clsx('text-xs px-1.5 py-0.5 rounded-full', tab === t.key ? 'bg-red-100 text-red-700' : 'bg-red-200 text-red-600')}>{t.badge}</span>
+                <span className={clsx('text-xs px-1.5 py-0.5 rounded-full font-semibold', tab === t.key ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700')}>{t.badge}</span>
               )}
             </button>
           ))}

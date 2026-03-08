@@ -35,7 +35,7 @@ export function Input({ label, error, icon, hint, suffix, className, id, ...prop
             icon  ? 'pl-9'  : 'pl-3',
             suffix ? 'pr-10' : 'pr-3',
             'py-2',
-            props.disabled && 'bg-gray-50 text-gray-400 cursor-not-allowed',
+            props.disabled && 'bg-gray-100 text-gray-600 cursor-not-allowed',
             className,
           )}
         />
@@ -44,7 +44,7 @@ export function Input({ label, error, icon, hint, suffix, className, id, ...prop
         )}
       </div>
       {error && <p className="text-xs text-red-600 flex items-center gap-1">{error}</p>}
-      {hint && !error && <p className="text-xs text-gray-400">{hint}</p>}
+      {hint && !error && <p className="text-xs text-gray-500">{hint}</p>}
     </div>
   );
 }
@@ -70,7 +70,7 @@ export function Select({ label, error, hint, className, id, children, ...props }
         className={clsx(
           'w-full rounded-lg border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 pl-3 pr-8 py-2 bg-white appearance-none cursor-pointer',
           error ? 'border-red-400 focus:ring-red-400/30' : 'border-gray-200 hover:border-gray-300',
-          props.disabled && 'bg-gray-50 text-gray-400 cursor-not-allowed',
+          props.disabled && 'bg-gray-100 text-gray-600 cursor-not-allowed',
           className,
         )}
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
@@ -78,7 +78,7 @@ export function Select({ label, error, hint, className, id, children, ...props }
         {children}
       </select>
       {error && <p className="text-xs text-red-600">{error}</p>}
-      {hint && !error && <p className="text-xs text-gray-400">{hint}</p>}
+      {hint && !error && <p className="text-xs text-gray-500">{hint}</p>}
     </div>
   );
 }
@@ -108,7 +108,7 @@ export function Textarea({ label, error, hint, className, id, ...props }: Textar
         )}
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
-      {hint && !error && <p className="text-xs text-gray-400">{hint}</p>}
+      {hint && !error && <p className="text-xs text-gray-500">{hint}</p>}
     </div>
   );
 }
