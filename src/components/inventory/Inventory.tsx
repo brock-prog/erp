@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Package, AlertTriangle, Plus, Search, TrendingDown, Printer } from 'lucide-react';
+import { Package, AlertTriangle, Plus, Search, TrendingDown, Printer, Download } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -8,6 +8,7 @@ import { Badge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
 import { Input, Select, Textarea } from '../ui/Input';
 import { formatCurrency, inventoryCategoryLabel, generateId, clsx } from '../../utils';
+import { exportToCSV, type ExportColumn } from '../../lib/exportUtils';
 import type { InventoryItem, InventoryCategory, InventoryTransaction, BarcodeLabel } from '../../types';
 import { LabelPrintModal } from '../../barcode/LabelPrintModal';
 import { buildInventoryLabel } from '../../barcode/BarcodeUtils';
@@ -272,6 +273,25 @@ export function Inventory() {
           Low stock only
         </label>
         <div className="ml-auto flex gap-2">
+          <button
+            onClick={() => {
+              const cols: ExportColumn<InventoryItem>[] = [
+                { key: 'sku', header: 'SKU' },
+                { key: 'name', header: 'Item Name' },
+                { key: 'category', header: 'Category', format: v => inventoryCategoryLabel(v) },
+                { key: 'quantityOnHand', header: 'Qty on Hand' },
+                { key: 'quantityAllocated', header: 'Allocated' },
+                { key: 'reorderPoint', header: 'Reorder Point' },
+                { key: 'unitCost', header: 'Unit Cost', format: v => formatCurrency(v) },
+                { key: 'location', header: 'Location', format: v => v ?? '' },
+              ];
+              exportToCSV(filtered, cols, 'inventory-export');
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
+          >
+            <Download size={13} />
+            Export
+          </button>
           <Button variant="secondary" icon={<Printer size={14} />} onClick={() => setPrintLabels(filtered.map(buildInventoryLabel))}>Print Labels</Button>
           <span data-tour="inv-new">
           {can(3)

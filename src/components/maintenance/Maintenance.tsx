@@ -5,6 +5,7 @@ import {
   Plus, Activity, X, Check, TrendingUp, BarChart2, Users,
   ClipboardList, Cpu, ChevronRight, Edit2, Trash2, Zap,
   Package, Timer, DollarSign, Percent, BookOpen, Info, ExternalLink,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Card, CardHeader } from '../ui/Card';
@@ -14,6 +15,7 @@ import { Modal } from '../ui/Modal';
 import { Input, Select, Textarea } from '../ui/Input';
 import { StatCard } from '../ui/StatCard';
 import { formatDate, formatCurrency, generateId, clsx } from '../../utils';
+import { exportToCSV, type ExportColumn } from '../../lib/exportUtils';
 import { MaintenanceScheduler } from '../equipment/MaintenanceScheduler';
 import type {
   MaintenanceTask, MaintenancePriority, MaintenanceType,
@@ -230,6 +232,26 @@ export function Maintenance() {
     dispatch({ type: 'UPDATE_MAINTENANCE', payload: updated });
   }
 
+  function handleExportWorkOrders() {
+    const cols: ExportColumn<MaintenanceTask>[] = [
+      { key: 'taskNumber', header: 'Task #' },
+      { key: 'equipmentName', header: 'Equipment' },
+      { key: 'type', header: 'Type', format: (v: MaintenanceType) => TYPE_LABELS[v] ?? v },
+      { key: 'title', header: 'Title' },
+      { key: 'priority', header: 'Priority' },
+      { key: 'status', header: 'Status', format: (v: string) => v.replace('_', ' ') },
+      { key: 'scheduledDate', header: 'Scheduled', format: (v: string) => v ? formatDate(v) : '' },
+      { key: 'assignedToName', header: 'Assigned To', format: (v: string | undefined) => v ?? '' },
+      { key: 'estimatedHours', header: 'Est. Hours', format: (v: number | undefined) => v?.toString() ?? '' },
+      { key: 'actualHours', header: 'Actual Hours', format: (v: number | undefined) => v ? `${v}h` : '' },
+      { key: 'laborCost', header: 'Labor Cost', format: (v: number) => formatCurrency(v ?? 0) },
+      { key: 'partsCost', header: 'Parts Cost', format: (v: number) => formatCurrency(v ?? 0) },
+      { key: 'description', header: 'Description' },
+      { key: 'notes', header: 'Notes' },
+    ];
+    exportToCSV(filtered, cols, 'maintenance-work-orders');
+  }
+
   function generateWOFromSchedule(schedule: MaintenanceSchedule) {
     const num = String(maintenanceTasks.length + 1).padStart(4, '0');
     const prefill: Partial<MaintenanceTask> = {
@@ -420,6 +442,16 @@ export function Maintenance() {
             {(fStatus !== 'all' || fEquip !== 'all' || fType !== 'all' || fPriority !== 'all' || fSearch) && (
               <button onClick={() => { setFStatus('all'); setFEquip('all'); setFType('all'); setFPriority('all'); setFSearch(''); }} className="text-xs text-gray-400 hover:text-gray-600 underline">Clear</button>
             )}
+            <div className="ml-auto">
+              <Button
+                icon={<Download size={15} />}
+                onClick={handleExportWorkOrders}
+                variant="secondary"
+                disabled={filtered.length === 0}
+              >
+                Export CSV
+              </Button>
+            </div>
           </div>
 
           <Card padding={false}>

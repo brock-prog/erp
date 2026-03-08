@@ -28,6 +28,8 @@ export interface User {
   active: boolean;
   createdAt: string;
   lastLogin?: string;
+  dashboardConfig?: DashboardConfig;
+  hourlyRate?: number;
 }
 
 /**
@@ -330,6 +332,7 @@ export interface Job {
   internalNotes?: string;
   attachments: string[];
   statusHistory: JobStatusEvent[];
+  laborEntries?: JobLaborEntry[];
   invoiceId?: string;
   createdAt: string;
   updatedAt: string;
@@ -354,12 +357,43 @@ export interface Job {
   satBatchLogId?: string;
 }
 
+export interface JobLaborEntry {
+  id: string;
+  userId: string;
+  userName: string;
+  date: string;           // YYYY-MM-DD
+  hours: number;
+  hourlyRate: number;
+  stage: JobStatus;       // which stage the work was done in
+  notes?: string;
+  createdAt: string;
+}
+
 export interface JobStatusEvent {
   status: JobStatus | SubJobStatus;
   timestamp: string;
   userId: string;
   userName: string;
   notes?: string;
+}
+
+// ─── Dashboard Config ─────────────────────────────────────────────────────────
+
+export type DashboardWidgetId =
+  | 'active_jobs' | 'revenue_month' | 'outstanding_ar' | 'avg_margin'
+  | 'completed_month' | 'rush_orders' | 'low_stock' | 'overdue_jobs'
+  | 'revenue_chart' | 'service_mix' | 'throughput' | 'recent_jobs'
+  | 'top_customers' | 'labor_hours';
+
+export interface DashboardWidget {
+  id: DashboardWidgetId;
+  enabled: boolean;
+  order: number;
+}
+
+export interface DashboardConfig {
+  widgets: DashboardWidget[];
+  refreshInterval?: number; // seconds, 0 = manual
 }
 
 // ─── Scheduling ───────────────────────────────────────────────────────────────

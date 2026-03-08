@@ -7,6 +7,39 @@ export function formatCurrency(amount: number, decimals = 2): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(amount);
 }
 
+export function formatNumber(n: number, decimals = 2): string {
+  return new Intl.NumberFormat('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(n);
+}
+
+export function formatPercent(n: number, decimals = 1): string {
+  return `${formatNumber(n, decimals)}%`;
+}
+
+export function formatHours(h: number): string {
+  return `${formatNumber(h, 1)}h`;
+}
+
+export function formatDuration(seconds: number): string {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const parts: string[] = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  if (m || parts.length === 0) parts.push(`${m}m`);
+  return parts.join(' ');
+}
+
+/** Returns current year-month string, e.g. '2026-03' */
+export function currentMonth(): string {
+  return new Date().toISOString().slice(0, 7);
+}
+
+/** Returns current month short name, e.g. 'Mar' */
+export function currentMonthLabel(): string {
+  return new Date().toLocaleString('en-US', { month: 'short' });
+}
+
 export function formatDate(dateStr: string): string {
   try { return format(parseISO(dateStr), 'MMM d, yyyy'); } catch { return dateStr; }
 }

@@ -11,7 +11,7 @@ import {
   ArrowRight, Target, Award, Zap, X, Edit2, Trash2,
   Search, Bell, Flame, Calendar, Inbox,
   MessageSquare, Send, Eye, MoreHorizontal,
-  Tag, Hash, Percent, Trophy, Star, Crown, Sparkles,
+  Tag, Hash, Percent, Trophy, Star, Crown, Sparkles, Download,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -21,7 +21,8 @@ import { useApp } from '../../context/AppContext';
 import { WorkflowHelp, type WorkflowStep } from '../ui/WorkflowHelp';
 import { GuidedTourButton, type TourStep } from '../ui/GuidedTour';
 import { Button } from '../ui/Button';
-import { formatCurrency, generateId } from '../../utils';
+import { formatCurrency, generateId, formatDate } from '../../utils';
+import { exportToCSV, type ExportColumn } from '../../lib/exportUtils';
 import type {
   CRMOpportunity, CRMActivity, CustomerScore,
   PipelineStage, ActivityType, ServiceType,
@@ -1084,6 +1085,25 @@ function PipelineTab({ opportunities, onEdit, onDelete, onStageChange, onNewOpp 
           ))}
         </div>
         <span className="text-xs text-gray-400 ml-auto">{filtered.length} opportunit{filtered.length !== 1 ? 'ies' : 'y'}</span>
+        <button
+          onClick={() => {
+            const cols: ExportColumn<CRMOpportunity>[] = [
+              { key: 'customerName', header: 'Company' },
+              { key: 'title', header: 'Title' },
+              { key: 'stage', header: 'Stage', format: v => PIPELINE_STAGES.find(s => s.id === v)?.label ?? v },
+              { key: 'estimatedValue', header: 'Value', format: v => formatCurrency(v) },
+              { key: 'probability', header: 'Probability', format: v => `${v}%` },
+              { key: 'expectedCloseDate', header: 'Expected Close', format: v => formatDate(v) },
+              { key: 'assignedToName', header: 'Owner' },
+              { key: 'createdAt', header: 'Created', format: v => formatDate(v) },
+            ];
+            exportToCSV(filtered, cols, 'pipeline-export');
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
+          title="Export to CSV"
+        >
+          <Download size={13} /> Export
+        </button>
       </div>
 
       {/* Kanban */}
@@ -1415,10 +1435,27 @@ function ActivitiesTab({ activities, customers, onMarkDone }: {
           })}
         </div>
         <select value={filterCust} onChange={e => setFilterCust(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1f355e]/30 ml-auto">
+          className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1f355e]/30">
           <option value="">All Customers</option>
           {customers.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        <button
+          onClick={() => {
+            const cols: ExportColumn<CRMActivity>[] = [
+              { key: 'createdAt', header: 'Date', format: v => formatDate(v as string) },
+              { key: 'type', header: 'Type', format: (v, row) => ACTIVITY_META[row.type]?.label ?? '' },
+              { key: 'subject', header: 'Contact / Subject' },
+              { key: 'customerName', header: 'Company' },
+              { key: 'notes', header: 'Description', format: v => (v as string) ?? '' },
+              { key: 'outcome', header: 'Outcome', format: v => (v as string) ?? '' },
+            ];
+            exportToCSV(filtered, cols, 'activities-export');
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors ml-auto"
+          title="Export to CSV"
+        >
+          <Download size={13} /> Export
+        </button>
       </div>
 
       {filtered.length === 0 ? (

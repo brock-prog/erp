@@ -163,30 +163,7 @@ export function Settings() {
       )}
 
       {activeTab === 'notifications' && (
-        <Card>
-          <CardHeader title="Notification Preferences" subtitle="Configure alerts and notifications" />
-          <div className="space-y-3">
-            {[
-              { label: 'Rush Job Alerts', desc: 'Notify when a rush job is created or due within 24h' },
-              { label: 'QC Failures', desc: 'Alert production manager on failed inspections' },
-              { label: 'Low Inventory', desc: 'Alert when items fall below reorder point' },
-              { label: 'Overdue Jobs', desc: 'Daily digest of overdue work orders' },
-              { label: 'Invoice Overdue', desc: 'Alert when invoices are past due date' },
-              { label: 'Equipment Maintenance', desc: 'Remind when maintenance is due within 7 days' },
-              { label: 'New Quote Approved', desc: 'Notify sales when customer approves a quote' },
-            ].map(n => (
-              <div key={n.label} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <div className="text-sm font-medium text-gray-900">{n.label}</div>
-                  <div className="text-xs text-gray-500">{n.desc}</div>
-                </div>
-                <div className="w-10 h-5 rounded-full bg-brand-600 flex items-center cursor-pointer">
-                  <div className="w-4 h-4 rounded-full bg-white shadow-sm translate-x-5 mx-0.5" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <NotificationPreferences />
       )}
 
       {activeTab === 'data' && (
@@ -194,6 +171,71 @@ export function Settings() {
       )}
       </div>
     </div>
+  );
+}
+
+// ─── Notification Preferences Component ───────────────────────────────────────
+
+type NotifKey = 'rushJobs' | 'qcFailures' | 'lowInventory' | 'overdueJobs' | 'invoiceOverdue' | 'equipmentMaint' | 'quoteApproved';
+
+const NOTIF_ITEMS: { key: NotifKey; label: string; desc: string }[] = [
+  { key: 'rushJobs',       label: 'Rush Job Alerts',       desc: 'Notify when a rush job is created or due within 24h' },
+  { key: 'qcFailures',    label: 'QC Failures',           desc: 'Alert production manager on failed inspections' },
+  { key: 'lowInventory',  label: 'Low Inventory',         desc: 'Alert when items fall below reorder point' },
+  { key: 'overdueJobs',   label: 'Overdue Jobs',          desc: 'Daily digest of overdue work orders' },
+  { key: 'invoiceOverdue',label: 'Invoice Overdue',       desc: 'Alert when invoices are past due date' },
+  { key: 'equipmentMaint',label: 'Equipment Maintenance', desc: 'Remind when maintenance is due within 7 days' },
+  { key: 'quoteApproved', label: 'New Quote Approved',    desc: 'Notify sales when customer approves a quote' },
+];
+
+function NotificationPreferences() {
+  const { state, dispatch } = useApp();
+  const currentUser = state.currentUser;
+  const [notifSaved, setNotifSaved] = useState(false);
+
+  // Initialize from user preferences or default all ON
+  const [prefs, setPrefs] = useState<Record<NotifKey, boolean>>(() => {
+    const saved = (currentUser as any)?.notificationPrefs;
+    if (saved && typeof saved === 'object') return saved;
+    return { rushJobs: true, qcFailures: true, lowInventory: true, overdueJobs: true, invoiceOverdue: true, equipmentMaint: true, quoteApproved: true };
+  });
+
+  function toggleNotif(key: NotifKey) {
+    setPrefs(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function handleSaveNotifs() {
+    if (!currentUser) return;
+    dispatch({ type: 'UPDATE_USER', payload: { ...currentUser, notificationPrefs: prefs } as any });
+    setNotifSaved(true);
+    setTimeout(() => setNotifSaved(false), 2000);
+  }
+
+  return (
+    <Card>
+      <CardHeader title="Notification Preferences" subtitle="Configure alerts and notifications" />
+      <div className="space-y-3">
+        {NOTIF_ITEMS.map(n => (
+          <div key={n.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div>
+              <div className="text-sm font-medium text-gray-900">{n.label}</div>
+              <div className="text-xs text-gray-500">{n.desc}</div>
+            </div>
+            <button
+              onClick={() => toggleNotif(n.key)}
+              className={`w-10 h-5 rounded-full transition-colors flex items-center ${prefs[n.key] ? 'bg-brand-600' : 'bg-gray-300'}`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform mx-0.5 ${prefs[n.key] ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex justify-end">
+        <Button onClick={handleSaveNotifs} icon={<Save size={14} />}>
+          {notifSaved ? 'Saved!' : 'Save Preferences'}
+        </Button>
+      </div>
+    </Card>
   );
 }
 

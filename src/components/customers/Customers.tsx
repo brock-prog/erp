@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Building2, Mail, Phone, ChevronRight, DollarSign, Briefcase, Users } from 'lucide-react';
+import { Plus, Search, Building2, Mail, Phone, ChevronRight, DollarSign, Briefcase, Users, Download } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -14,6 +14,7 @@ import {
 import type { Customer, CustomerType, CustomerCurrency } from '../../types';
 import { WorkflowHelp, type WorkflowStep } from '../ui/WorkflowHelp';
 import { GuidedTourButton, type TourStep } from '../ui/GuidedTour';
+import { exportToCSV, type ExportColumn } from '../../lib/exportUtils';
 
 const CUSTOMERS_WORKFLOW: WorkflowStep[] = [
   { type: 'start', icon: '🤝', label: 'New Customer Added',
@@ -256,6 +257,43 @@ export function Customers() {
     government: 'bg-red-100 text-red-700',
   };
 
+  function handleExportCSV() {
+    const columns: ExportColumn<any>[] = [
+      { key: 'name', header: 'Customer Name' },
+      { key: 'type', header: 'Type' },
+      { key: 'status', header: 'Status' },
+      { key: 'accountNumber', header: 'Account Number' },
+      { key: 'primaryContactName', header: 'Primary Contact Name' },
+      { key: 'primaryContactEmail', header: 'Primary Contact Email' },
+      { key: 'primaryContactPhone', header: 'Primary Contact Phone' },
+      { key: 'paymentTerms', header: 'Payment Terms' },
+      { key: 'creditLimit', header: 'Credit Limit', format: (v) => formatCurrency(v) },
+      { key: 'currentBalance', header: 'Current Balance', format: (v) => formatCurrency(v) },
+      { key: 'taxExempt', header: 'Tax Exempt' },
+      { key: 'tags', header: 'Tags' },
+    ];
+
+    const exportData = filtered.map(c => {
+      const primary = c.contacts.find(ct => ct.isPrimary) ?? c.contacts[0];
+      return {
+        name: c.name,
+        type: c.type,
+        status: c.status,
+        accountNumber: c.accountNumber,
+        primaryContactName: primary?.name ?? '',
+        primaryContactEmail: primary?.email ?? '',
+        primaryContactPhone: primary?.phone ?? '',
+        paymentTerms: c.paymentTerms,
+        creditLimit: c.creditLimit,
+        currentBalance: c.currentBalance,
+        taxExempt: c.taxExempt ? 'Yes' : 'No',
+        tags: c.tags?.join('; ') ?? '',
+      };
+    });
+
+    exportToCSV(exportData, columns, 'customers-export');
+  }
+
   return (
     <div className="space-y-5">
       <NewCustomerModal open={showNew} onClose={() => setShowNew(false)} />
@@ -283,9 +321,18 @@ export function Customers() {
             </button>
           ))}
         </div>
+        <Button
+          icon={<Download size={14} />}
+          variant="secondary"
+          onClick={handleExportCSV}
+          title="Export visible customers to CSV"
+          className="ml-auto"
+        >
+          Export
+        </Button>
         {can(3)
-          ? <span data-tour="new-customer-btn"><Button icon={<Plus size={14} />} onClick={() => setShowNew(true)} className="ml-auto">New Customer</Button></span>
-          : <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg font-medium">View Only</span>
+          ? <span data-tour="new-customer-btn"><Button icon={<Plus size={14} />} onClick={() => setShowNew(true)}>New Customer</Button></span>
+          : <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg font-medium">View Only</span>
         }
       </div>
 

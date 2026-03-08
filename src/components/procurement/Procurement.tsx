@@ -12,6 +12,7 @@ import { Modal } from '../ui/Modal';
 import { WorkflowHelp, type WorkflowStep } from '../ui/WorkflowHelp';
 import { GuidedTourButton, type TourStep } from '../ui/GuidedTour';
 import { clsx, generateId, formatCurrency } from '../../utils';
+import { exportToCSV, type ExportColumn } from '../../lib/exportUtils';
 import type {
   Vendor,
   VendorType,
@@ -975,6 +976,40 @@ function VendorsTab() {
     other: 'Other',
   };
 
+  const handleExportVendors = () => {
+    const columns: ExportColumn<Vendor>[] = [
+      { key: 'name', header: 'Name' },
+      {
+        key: 'contacts',
+        header: 'Contact',
+        format: (contacts) => {
+          const primary = (contacts as any[])?.find((c) => c.isPrimary) ?? (contacts as any[])?.[0];
+          return primary?.name ?? '';
+        },
+      },
+      {
+        key: 'contacts',
+        header: 'Email',
+        format: (contacts) => {
+          const primary = (contacts as any[])?.find((c) => c.isPrimary) ?? (contacts as any[])?.[0];
+          return primary?.email ?? '';
+        },
+      },
+      {
+        key: 'contacts',
+        header: 'Phone',
+        format: (contacts) => {
+          const primary = (contacts as any[])?.find((c) => c.isPrimary) ?? (contacts as any[])?.[0];
+          return primary?.phone ?? '';
+        },
+      },
+      { key: 'paymentTerms', header: 'Payment Terms' },
+      { key: 'status', header: 'Status' },
+      { key: 'currency', header: 'Currency' },
+    ];
+    exportToCSV(filtered, columns, 'vendors-export');
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
@@ -1012,6 +1047,14 @@ function VendorsTab() {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
+
+        <button
+          onClick={handleExportVendors}
+          className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors flex items-center gap-1"
+          title="Export vendors to CSV"
+        >
+          <Download size={16} /> Export
+        </button>
 
         {isManagerPlus && (
           <button
@@ -1179,6 +1222,41 @@ function PurchaseOrdersTab() {
     setShowModal(true);
   };
 
+  const handleExportPOs = () => {
+    const columns: ExportColumn<PurchaseOrder>[] = [
+      { key: 'poNumber', header: 'PO Number' },
+      { key: 'supplier', header: 'Vendor Name' },
+      { key: 'status', header: 'Status' },
+      {
+        key: 'createdAt',
+        header: 'Order Date',
+        format: (date) => new Date(date as string).toLocaleDateString(),
+      },
+      {
+        key: 'expectedDelivery',
+        header: 'Expected Delivery',
+        format: (date) => (date ? new Date(date as string).toLocaleDateString() : '—'),
+      },
+      {
+        key: 'subtotal',
+        header: 'Subtotal',
+        format: (value) => formatCurrency(value as number),
+      },
+      {
+        key: 'tax',
+        header: 'Tax',
+        format: (value) => formatCurrency(value as number),
+      },
+      {
+        key: 'total',
+        header: 'Total',
+        format: (value) => formatCurrency(value as number),
+      },
+      { key: 'approvedBy', header: 'Approved By' },
+    ];
+    exportToCSV(filtered, columns, 'purchase-orders-export');
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
@@ -1221,6 +1299,14 @@ function PurchaseOrdersTab() {
               </option>
             ))}
         </select>
+
+        <button
+          onClick={handleExportPOs}
+          className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors flex items-center gap-1"
+          title="Export purchase orders to CSV"
+        >
+          <Download size={16} /> Export
+        </button>
 
         {isManagerPlus && (
           <button

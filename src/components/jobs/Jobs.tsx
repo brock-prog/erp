@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Plus, Search, Briefcase, Flame, AlertTriangle,
+  Plus, Search, Briefcase, Flame, AlertTriangle, Download,
   Clock, CheckCircle, Filter, Layers, Zap, BookOpen, Camera,
   Package, Palette, ArrowRight, Circle,
 } from 'lucide-react';
@@ -17,7 +17,8 @@ import {
   formatCurrency, formatDate, jobStatusConfig, priorityConfig,
   serviceTypeLabel, isOverdue, generateId, generateJobNumber, clsx,
 } from '../../utils';
-import type { Job, JobStatus, Priority, ServiceType, MaterialRequirement } from '../../types';
+import { exportToCSV, type ExportColumn } from '../../lib/exportUtils';
+import type { Job, JobStatus, Priority, ServiceType, MaterialRequirement, JobLaborEntry } from '../../types';
 import { WorkflowHelp, type WorkflowStep } from '../ui/WorkflowHelp';
 import { GuidedTourButton, type TourStep } from '../ui/GuidedTour';
 
@@ -333,11 +334,37 @@ export function Jobs() {
             </button>
           ))}
         </div>
-        <span data-tour="jobs-new" className="ml-auto">
-        {can(3)
-          ? <Button icon={<Plus size={14} />} onClick={() => setShowNew(true)}>New Job</Button>
-          : <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg font-medium">View Only</span>
-        }
+        <span className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => {
+              const cols: ExportColumn<Job>[] = [
+                { key: 'jobNumber', header: 'Job #' },
+                { key: 'customerName', header: 'Customer' },
+                { key: 'poNumber', header: 'PO #', format: v => v ?? '' },
+                { key: 'serviceType', header: 'Service', format: v => serviceTypeLabel(v) },
+                { key: 'status', header: 'Status', format: v => jobStatusConfig(v).label },
+                { key: 'priority', header: 'Priority', format: v => priorityConfig(v).label },
+                { key: 'dueDate', header: 'Due Date', format: v => formatDate(v) },
+                { key: 'salePrice', header: 'Sale Price', format: v => formatCurrency(v) },
+                { key: 'laborCost', header: 'Labor Cost', format: v => formatCurrency(v) },
+                { key: 'materialCost', header: 'Material Cost', format: v => formatCurrency(v) },
+                { key: 'totalCost', header: 'Total Cost', format: v => formatCurrency(v) },
+                { key: 'assignedOperator', header: 'Operator', format: v => v ?? '' },
+                { key: 'receivedDate', header: 'Received', format: v => formatDate(v) },
+                { key: 'completedDate', header: 'Completed', format: v => v ? formatDate(v) : '' },
+              ];
+              exportToCSV(filtered, cols, 'jobs-export');
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
+          >
+            <Download size={13} />Export
+          </button>
+          <span data-tour="jobs-new">
+          {can(3)
+            ? <Button icon={<Plus size={14} />} onClick={() => setShowNew(true)}>New Job</Button>
+            : <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg font-medium">View Only</span>
+          }
+          </span>
         </span>
       </div>
 
@@ -347,7 +374,7 @@ export function Jobs() {
           { icon: Briefcase, label: 'Active', value: state.jobs.filter(j => !['complete','cancelled'].includes(j.status)).length, color: 'text-brand-700' },
           { icon: Flame, label: 'Rush', value: state.jobs.filter(j => j.priority === 'rush' && !['complete','cancelled'].includes(j.status)).length, color: 'text-red-600' },
           { icon: AlertTriangle, label: 'Overdue', value: state.jobs.filter(j => isOverdue(j.dueDate, j.status)).length, color: 'text-amber-600' },
-          { icon: CheckCircle, label: 'Done (Feb)', value: state.jobs.filter(j => j.status === 'complete' && j.completedDate?.startsWith('2026-02')).length, color: 'text-green-700' },
+          { icon: CheckCircle, label: `Done (${new Date().toLocaleString('en-US', { month: 'short' })})`, value: state.jobs.filter(j => j.status === 'complete' && j.completedDate?.startsWith(new Date().toISOString().slice(0, 7))).length, color: 'text-green-700' },
         ].map(stat => (
           <Card key={stat.label} className="flex items-center gap-3">
             <stat.icon size={20} className={stat.color} />
@@ -424,6 +451,204 @@ export function Jobs() {
           </tbody>
         </table>
       </Card>
+    </div>
+  );
+}
+
+// Labor Time Tracking Card
+interface LaborTimeTrackingCardProps {
+  job: Job;
+  dispatch: React.Dispatch<any>;
+  currentUser: any;
+}
+
+function LaborTimeTrackingCard({ job, dispatch, currentUser }: LaborTimeTrackingCardProps) {
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    hours: 0.25,
+    stage: job.status,
+    notes: '',
+    hourlyRate: currentUser?.hourlyRate ?? 0,
+  });
+
+  const entries = job.laborEntries ?? [];
+  const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);
+  const totalCost = entries.reduce((sum, e) => sum + (e.hours * e.hourlyRate), 0);
+
+  function handleSave() {
+    if (!formData.hours || formData.hours <= 0) {
+      alert('Hours must be greater than 0');
+      return;
+    }
+
+    const newEntry: JobLaborEntry = {
+      id: generateId(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      date: formData.date,
+      hours: formData.hours,
+      hourlyRate: formData.hourlyRate,
+      stage: formData.stage as JobStatus,
+      notes: formData.notes || undefined,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedEntries = [...entries, newEntry];
+    const newLaborCost = updatedEntries.reduce((sum, e) => sum + (e.hours * e.hourlyRate), 0);
+    const newTotalCost = (job.materialCost ?? 0) + newLaborCost;
+
+    dispatch({
+      type: 'UPDATE_JOB',
+      payload: {
+        ...job,
+        laborEntries: updatedEntries,
+        laborCost: newLaborCost,
+        totalCost: newTotalCost,
+        updatedAt: new Date().toISOString().split('T')[0],
+      },
+    });
+
+    setShowForm(false);
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      hours: 0.25,
+      stage: job.status,
+      notes: '',
+      hourlyRate: currentUser?.hourlyRate ?? 0,
+    });
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Labor Time Tracking</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={<Clock size={13} />}
+          onClick={() => setShowForm(!showForm)}
+        >
+          Log Time
+        </Button>
+      </div>
+
+      {showForm && (
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Date</label>
+              <Input
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Hours</label>
+              <Input
+                type="number"
+                step="0.25"
+                min="0"
+                value={formData.hours}
+                onChange={(e) => setFormData({ ...formData, hours: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Stage</label>
+              <Select
+                value={formData.stage}
+                onChange={(e) => setFormData({ ...formData, stage: e.target.value as JobStatus })}
+              >
+                <option value="received">Received</option>
+                <option value="prep">Prep</option>
+                <option value="blast">Blast</option>
+                <option value="rack">Rack</option>
+                <option value="pretreat">Pretreat</option>
+                <option value="coat">Coat</option>
+                <option value="cure">Cure</option>
+                <option value="qc">QC</option>
+                <option value="unrack">Unrack</option>
+                <option value="shipping">Shipping</option>
+                <option value="complete">Complete</option>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Rate ($/hr)</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.hourlyRate}
+                onChange={(e) => setFormData({ ...formData, hourlyRate: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">Notes (optional)</label>
+            <Textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="E.g., prep work, touch-ups..."
+              rows={2}
+            />
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Button size="sm" variant="primary" onClick={handleSave}>
+              Save Entry
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {entries.length === 0 ? (
+        <p className="text-sm text-gray-400">No labor entries yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="px-3 py-2 text-left font-semibold text-gray-500">User</th>
+                <th className="px-3 py-2 text-left font-semibold text-gray-500">Date</th>
+                <th className="px-3 py-2 text-center font-semibold text-gray-500">Hours</th>
+                <th className="px-3 py-2 text-center font-semibold text-gray-500">Rate</th>
+                <th className="px-3 py-2 text-center font-semibold text-gray-500">Stage</th>
+                <th className="px-3 py-2 text-right font-semibold text-gray-500">Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry, i) => (
+                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-3 py-2 text-gray-800">{entry.userName}</td>
+                  <td className="px-3 py-2 text-gray-600">{entry.date}</td>
+                  <td className="px-3 py-2 text-center font-medium text-gray-800">{entry.hours.toFixed(2)}</td>
+                  <td className="px-3 py-2 text-center text-gray-600">{formatCurrency(entry.hourlyRate)}/hr</td>
+                  <td className="px-3 py-2 text-center"><Badge className="bg-blue-100 text-blue-700">{jobStatusConfig(entry.stage as JobStatus)?.label ?? entry.stage}</Badge></td>
+                  <td className="px-3 py-2 text-right font-medium text-gray-800">{formatCurrency(entry.hours * entry.hourlyRate)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {entries.length > 0 && (
+        <div className="border-t pt-3 mt-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600 font-medium">Total Hours:</span>
+            <span className="font-bold text-gray-900">{totalHours.toFixed(2)}h</span>
+          </div>
+          <div className="flex items-center justify-between text-sm mt-1">
+            <span className="text-gray-600 font-medium">Total Labor Cost:</span>
+            <span className="font-bold text-gray-900">{formatCurrency(totalCost)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -589,6 +814,11 @@ export function JobDetail() {
                 <tbody>{job.parts.map(p => <tr key={p.id}><td className="px-3 py-2 text-gray-800">{p.description}</td><td className="px-3 py-2 text-gray-600">{p.material}</td><td className="px-3 py-2 font-bold">{p.quantity}</td><td className="px-3 py-2 text-gray-600">{p.weight ? `${p.weight} lbs` : '—'}</td><td className="px-3 py-2 text-gray-500 font-mono text-xs">{p.partNumber ?? '—'}</td></tr>)}</tbody>
               </table>
             )}
+          </Card>
+
+          {/* Labor Time Tracking */}
+          <Card>
+            <LaborTimeTrackingCard job={job} dispatch={dispatch} currentUser={state.currentUser} />
           </Card>
 
           {/* ── Phase Tracker (multi-phase jobs) ─────────────────────── */}

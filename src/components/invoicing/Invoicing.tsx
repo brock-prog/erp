@@ -9,6 +9,7 @@ import { Modal } from '../ui/Modal';
 import { Input, Select, Textarea } from '../ui/Input';
 import { formatCurrency, formatDate, invoiceStatusConfig, generateId, generateInvoiceNumber, clsx } from '../../utils';
 import { exportInvoicesToQBO, downloadCSV } from '../../utils/qbExport';
+import { exportToCSV, type ExportColumn } from '../../lib/exportUtils';
 import type { Invoice, InvoiceLineItem, InvoiceStatus, Payment } from '../../types';
 import { WorkflowHelp, type WorkflowStep } from '../ui/WorkflowHelp';
 import { GuidedTourButton, type TourStep } from '../ui/GuidedTour';
@@ -272,7 +273,8 @@ export function Invoicing() {
 
   const totalOutstanding = state.invoices.filter(i => ['sent','partial','overdue'].includes(i.status)).reduce((s,i) => s+i.balance, 0);
   const totalOverdue = state.invoices.filter(i => i.status === 'overdue').reduce((s,i) => s+i.balance, 0);
-  const paidThisMonth = state.invoices.filter(i => i.status === 'paid' && i.paidDate?.startsWith('2026-02')).reduce((s,i) => s+i.total, 0);
+  const currentYearMonth = new Date().toISOString().slice(0, 7);
+  const paidThisMonth = state.invoices.filter(i => i.status === 'paid' && i.paidDate?.startsWith(currentYearMonth)).reduce((s,i) => s+i.total, 0);
   const uninvoicedJobs = state.jobs.filter(j => j.status === 'complete' && !j.invoiceId).length;
 
   return (
@@ -352,10 +354,32 @@ export function Invoicing() {
             </button>
           ))}
         </div>
-        {can(2)
-          ? <Button icon={<Plus size={14} />} onClick={() => setShowNew(true)} className="ml-auto">New Invoice</Button>
-          : <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg font-medium">View Only</span>
-        }
+        <div className="ml-auto flex gap-2">
+          <button
+            onClick={() => {
+              const cols: ExportColumn<Invoice>[] = [
+                { key: 'invoiceNumber', header: 'Invoice #' },
+                { key: 'customerName', header: 'Customer' },
+                { key: 'issueDate', header: 'Issue Date', format: v => formatDate(v) },
+                { key: 'dueDate', header: 'Due Date', format: v => formatDate(v) },
+                { key: 'subtotal', header: 'Subtotal', format: v => formatCurrency(v) },
+                { key: 'taxAmount', header: 'Tax', format: v => formatCurrency(v) },
+                { key: 'total', header: 'Total', format: v => formatCurrency(v) },
+                { key: 'amountPaid', header: 'Paid', format: v => formatCurrency(v) },
+                { key: 'balance', header: 'Balance', format: v => formatCurrency(v) },
+                { key: 'status', header: 'Status' },
+              ];
+              exportToCSV(filtered, cols, 'invoices-export');
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
+          >
+            <Download size={13} />Export
+          </button>
+          {can(2)
+            ? <Button icon={<Plus size={14} />} onClick={() => setShowNew(true)}>New Invoice</Button>
+            : <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg font-medium">View Only</span>
+          }
+        </div>
       </div>
 
       {/* Invoice table */}
